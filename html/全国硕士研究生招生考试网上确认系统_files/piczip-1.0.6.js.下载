@@ -1,0 +1,190 @@
+if (!HTMLCanvasElement.prototype.toBlob) {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'toBlob', {
+    value: function (callback, type, quality) {
+      var canvas = this;
+      setTimeout(function() {
+        var binStr = atob( canvas.toDataURL(type, quality).split(',')[1] ),
+        len = binStr.length,
+        arr = new Uint8Array(len);
+
+        for (var i = 0; i < len; i++ ) {
+           arr[i] = binStr.charCodeAt(i);
+        }
+
+        callback( new Blob( [arr], {type: type || 'image/jpeg'} ) );
+      });
+    }
+ });
+}
+
+
+// 必要条件
+window.URL = window.URL || window.webkitURL;
+
+// 获取旋转info：-2 = not jpeg, -1 = no data, 1..8 = orientations
+function getExifOrientation(file, callback) {
+
+  // 这里只是为了取得文件的EXIF特征
+  // if (file.slice) {
+  //   file = file.slice(0, 131072); 
+  // } else if (file.webkitSlice) {
+  //   file = file.webkitSlice(0, 131072);
+  // } else if(file.mozSlice) {
+  //   file = file.mozSlice(0, 131072);
+  // }
+
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var view = new DataView(e.target.result);
+    if (view.getUint16(0, false) != 0xFFD8) {
+      callback(-2);
+      return;
+    }
+    var length = view.byteLength,
+      offset = 2;
+    while (offset < length) {
+      var marker = view.getUint16(offset, false);
+      offset += 2;
+      if (marker == 0xFFE1) {
+        if (view.getUint32(offset += 2, false) != 0x45786966) {
+          callback(-1);
+          return;
+        }
+        var little = view.getUint16(offset += 6, false) == 0x4949;
+        offset += view.getUint32(offset + 4, little);
+        var tags = view.getUint16(offset, little);
+        offset += 2;
+        for (var i = 0; i < tags; i++)
+          if (view.getUint16(offset + (i * 12), little) == 0x0112) {
+            callback(view.getUint16(offset + (i * 12) + 8, little));
+            return;
+          }
+      } else if ((marker & 0xFF00) != 0xFF00) break;
+      else offset += view.getUint16(offset, false);
+    }
+    callback(-1);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+// Derived from cc by-sa
+function imgToCanvasWithOrientation(img, rawWidth, rawHeight, orientation) {
+  var canvas = document.createElement('canvas');
+  if (orientation > 4) {
+    canvas.width = rawHeight;
+    canvas.height = rawWidth;
+  } else {
+    canvas.width = rawWidth;
+    canvas.height = rawHeight;
+  }
+
+
+  var ctx = canvas.getContext('2d');
+    // 注：360移动浏览器在android下， ctx.transform 会造成问题
+  if (orientation > 1) {
+    // console.log("EXIF orientation = " + orientation + ", rotating picture");
+    switch (orientation) {
+      case 2:
+        ctx.transform(-1, 0, 0, 1, rawWidth, 0);
+        break;
+      case 3:
+        ctx.transform(-1, 0, 0, -1, rawWidth, rawHeight);
+        break;
+      case 4:
+        ctx.transform(1, 0, 0, -1, 0, rawHeight);
+        break;
+      case 5:
+        ctx.transform(0, 1, 1, 0, 0, 0);
+        break;
+      case 6:
+        ctx.transform(0, 1, -1, 0, rawHeight, 0);
+        break;
+      case 7:
+        ctx.transform(0, -1, -1, 0, rawHeight, rawWidth);
+        break;
+      case 8:
+        ctx.transform(0, -1, 1, 0, 0, rawWidth);
+        break;
+    }
+  }
+ 
+  ctx.drawImage(img, 0, 0, rawWidth, rawHeight);
+  return canvas;
+}
+
+
+//  重构压缩图片文件
+function compressIMG(file, options, callback) {
+  // 兼容性判断
+  if (!(window.File && window.FileReader && window.FileList && window.Blob)) {
+    //  alert('The File APIs are not fully supported in this browser.');
+    alert('当前浏览器版本不支持图片压缩功能，请更换或升级浏览器，推荐使用chrome浏览器。');
+    return false;
+  }
+
+
+  // 图片文件最大 100 KB ( 原图低于100kb不压缩)
+  var acceptFileSize = options.acceptFileSize || 100 * 1024;
+  // 图片质量默认压缩为 0.7
+  var quality = options.quality || 0.7;
+  // 默认输出格式：'image/jpeg'
+  var imageType = options.type || 'image/jpeg';
+  // 默认最大宽度： 1920 px；
+  var maxWidth = options.maxWidth || 1200;
+  // 默认最大高度： 无限大
+  var maxHeight = options.maxHeight || Infinity;
+
+
+  // 低于100KB 的jpeg 不压缩, 质量改为1
+  if (file.size <= acceptFileSize) {
+    // callback(file);
+    quality = 1;
+  }
+
+  // console出原文件大小
+  // console.log('图片原始大小', parseFloat(file.size / 1024 / 1024).toFixed(2), 'MB');
+
+// 旋转角度初始化
+  var orientation = 0; 
+  // 异步获取角度
+  getExifOrientation(file, function (ori) {
+    orientation = ori
+  });
+
+  var img = new Image();
+  img.onerror = function () {
+    URL.revokeObjectURL(this.src);
+    img = null; // 考虑移动小内存，回收img
+    // callback(file);
+    alert('图片无法识别，文件格式不对或可能已损坏。');
+  };
+
+
+  img.onload = function () {
+    URL.revokeObjectURL(this.src);
+      // console.log('旋转度：', orientation)
+      var oW = img.width,
+        oH = img.height;
+    
+      setTimeout(function(){
+        var scale = (orientation > 4 ?
+          Math.min(maxHeight / oW, maxWidth / oH, 1):
+          Math.min(maxWidth / oW, maxHeight / oH, 1));
+        var h = Math.round(oH * scale);
+        var w = Math.round(oW * scale);
+        var canvas = imgToCanvasWithOrientation(img, w, h, orientation);  
+        img = null; // 考虑移动小内存，回收img
+
+        canvas.toBlob(function (blob) {
+          canvas = null; // 考虑移动小内存，回收canvas 
+          callback(blob, file.name);
+        }, imageType, quality);
+
+      },300)
+    
+
+  };
+  img.src = URL.createObjectURL(file);
+
+}

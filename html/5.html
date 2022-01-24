@@ -1,0 +1,32 @@
+<form id="form-msg" class="sui-form form-horizontal"  method="post" action="/ticket/queryByRoute">
+
+    <div id="navfirst">
+        <ul id="menu">
+            <li > <div class="control-group">
+                <label for="startpoint" class="control-label">起点：</label>
+                <div class="controls">
+                    <input type="text" id="startpoint"  name="departPlace" class="input-middle"
+                           required  lay-verify="required" placeholder="请输入起点站"/>
+                </div></div></li>
+            <li ><div class="control-group">
+                <label for="finishpoint" class="control-label">终点：</label>
+                <div class="controls">
+                    <input type="text" id="finishpoint"  name="arrivePlace" class="input-middle"
+                           required  lay-verify="required" placeholder="请输入终点站"/>
+                </div></div></li>
+            <li ><div class="control-group">
+                <label for="datepicker" class="control-label">出发日期：</label>
+                <div class="controls">
+                    <input type="date" name="date" id="datepicker" />
+                </div></div></li>
+            <li ><div class="control-group">
+                <label for="submit-btn" class="control-label"></label>
+                <div class="controls">
+                    <input type="hidden" name="flag" value="0" />
+                    <input type="submit" id="submit-btn" class="input-small" value="车次查询" />
+                    <a class="btn btn-primary" href="${pageContext.request.contextPath}/ticket/allTicketsUser">查看全部</a>
+                </div></div>
+            </li>
+        </ul>
+    </div>
+</form>

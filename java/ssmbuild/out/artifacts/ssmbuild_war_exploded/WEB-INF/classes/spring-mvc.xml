@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+   http://www.springframework.org/schema/beans/spring-beans.xsd
+   http://www.springframework.org/schema/context
+   http://www.springframework.org/schema/context/spring-context.xsd
+   http://www.springframework.org/schema/mvc
+   https://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- 1.开启SpringMVC注解驱动，扩充了注解驱动，可以将参数绑定到控制器参数     -->
+    <mvc:annotation-driven/>
+    <!-- 2.静态资源默认servlet配置-->
+    <mvc:default-servlet-handler/>
+
+    <!-- 3.配置jsp 显示ViewResolver视图解析器 -->
+    <!-- ViewResolver视图解析器，告诉DispatcherServlet将由哪个ViewResolver获取View -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+        <property name="prefix" value="/WEB-INF/jsp/"/><!--存放jsp文件的目录-->
+        <property name="suffix" value=".jsp"/><!-- jsp文件后缀 -->
+    </bean>
+    <bean id="multipartResolver" class="org.springframework.web.multipart.support.StandardServletMultipartResolver"/>
+    <!-- 4.扫描web相关的bean -->
+    <!--  DispatcherServlet上下文，只搜索@Controller标注的类，  不搜索其他标注的类 -->
+    <context:component-scan base-package="com.Yohann.controller"/>
+
+</beans>

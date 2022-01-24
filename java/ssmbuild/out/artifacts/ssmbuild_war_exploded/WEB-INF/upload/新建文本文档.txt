@@ -1,0 +1,2 @@
+C:\Users\hp\Desktop\java\ssmbuild\out\artifacts\ssmbuild_war_exploded\upload\sliver20210711003011592.txt
+C:\Users\hp\Desktop\java\ssmbuild\out\artifacts\ssmbuild_war_exploded\WEB-INF\upload
